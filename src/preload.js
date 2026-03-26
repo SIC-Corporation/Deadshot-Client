@@ -1,7 +1,6 @@
 const { ipcRenderer } = require('electron');
 const $ = (selector) => document.querySelector(selector);
 
-// --- NEXAFLOW UI GENERATOR ---
 const genSetting = (type, details) => {
 	let element = document.createElement('template');
 	switch (type) {
@@ -59,9 +58,7 @@ ipcRenderer.once('load', (e, args) => {
 
 window.onload = () => {
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            e.stopPropagation(); 
-        }
+        if (e.key === 'Escape') e.stopPropagation(); 
         if (e.altKey && e.key === 'F4') {
             e.preventDefault();
             showExitScreen();
@@ -81,13 +78,10 @@ window.onload = () => {
                     <button id="exit-confirm" style="background: #ff4757; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 800; cursor: pointer;">EXIT</button>
                     <button id="exit-cancel" style="background: #222; color: #888; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-left: 10px;">STAY</button>
                 </div>
-            </div>
-        `;
+            </div>`;
         document.body.appendChild(overlay);
         document.getElementById('exit-cancel').onclick = () => overlay.remove();
-        document.getElementById('exit-confirm').onclick = () => {
-            ipcRenderer.send('app-quit-action'); 
-        };
+        document.getElementById('exit-confirm').onclick = () => ipcRenderer.send('app-quit-action');
     }
 
     setInterval(() => { window.postMessage(JSON.stringify({ type: "gimmerich" })) }, 1000);
@@ -103,12 +97,11 @@ window.onload = () => {
     const hud = document.createElement('div');
     hud.id = 'nexa-hud';
     hud.innerHTML = `
-        <div style="font-size: 9px; font-weight: 900; opacity: 0.6; letter-spacing: 1px;">NEXAFLOW CLIENT</div>
+        <div style="font-size: 9px; font-weight: 900; opacity: 0.6; letter-spacing: 1px;">NEXAFLOW CLIENT FOR DEADSHOT</div>
         <div style="display: flex; gap: 10px; align-items: baseline;">
             <span id="fps-val" style="font-size: 18px; font-weight: 800; color: #ff4757;">--</span>
             <span style="font-size: 10px; font-weight: 700; opacity: 0.8;">FPS</span>
-        </div>
-    `;
+        </div>`;
     document.body.appendChild(hud);
 
     const style = document.createElement('style');
@@ -120,14 +113,13 @@ window.onload = () => {
         .nexa-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
         input:checked + .slider { background-color: #ff4757; }
-        .smooth-play-active { image-rendering: pixelated; filter: contrast(1.05) brightness(1.05); }
-    `;
+        .smooth-play-active { image-rendering: pixelated; filter: contrast(1.05) brightness(1.05); }`;
     document.head.appendChild(style);
 
     let settings = $('#settingsDiv');
     if (settings) {
         settings.innerHTML = ''; 
-        settings.append(genSetting('info', { text: 'NexaFlow Settings' }));
+        settings.append(genSetting('info', { text: 'NexaFlow for DeadShot' }));
         settings.append(genSetting('toggle', { text: 'Discord Presence', id: 'enablePresence' }));
         settings.append(genSetting('toggle', { text: 'Rich Presence', id: 'enableRichPresence' }));
         settings.append(genSetting('spacer'));
