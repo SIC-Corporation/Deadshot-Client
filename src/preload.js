@@ -1,59 +1,69 @@
 const { ipcRenderer } = require('electron');
 const $ = (selector) => document.querySelector(selector);
 
+// --- NEXAFLOW UI GENERATOR ---
 const genSetting = (type, details) => {
-	let element = document.createElement('template');
-	switch (type) {
-		case 'spacer': {
-			element.innerHTML = `<div class="bar" style="background: rgba(255,255,255,0.05); height: 1px; margin: 10px 0;"></div>`;
-			break;
-		}
-		case 'info': {
-			element.innerHTML = `
-			<div class="setting toggle" style="margin-top: 14px; margin-bottom: 14px;">
-			<p style="font-size: 14px; letter-spacing: 2px; font-weight: 800; color: #ff4757; text-transform: uppercase;">${details.text}</p>
-			</div>`;
-			break;
-		}
-		case 'toggle': {
-			element.innerHTML = `
-			<div class="setting toggle" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-			<p style="font-size: 16px; color: #eee;">${details.text}</p>
-			<label class="nexa-switch"><input id=${details.id} checked type="checkbox">
-			<span class="slider"></span></label></div>`;
-			break;
-		}
-	}
-	return element.content;
+    let element = document.createElement('template');
+    switch (type) {
+        case 'spacer': {
+            element.innerHTML = `<div class="bar" style="background: rgba(255,255,255,0.05); height: 1px; margin: 10px 0;"></div>`;
+            break;
+        }
+        case 'info': {
+            element.innerHTML = `
+            <div class="setting toggle" style="margin-top: 14px; margin-bottom: 14px;">
+            <p style="font-size: 14px; letter-spacing: 2px; font-weight: 800; color: #ff4757; text-transform: uppercase;">${details.text}</p>
+            </div>`;
+            break;
+        }
+        case 'toggle': {
+            element.innerHTML = `
+            <div class="setting toggle" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 16px; color: #eee;">${details.text}</p>
+            <label class="nexa-switch"><input id=${details.id} checked type="checkbox">
+            <span class="slider"></span></label></div>`;
+            break;
+        }
+        case 'button': {
+            element.innerHTML = `
+            <div class="setting" style="margin-top: 10px; margin-bottom: 10px;">
+                <button id="${details.id}" class="comm-btn" style="width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700;">
+                    ${details.text}
+                </button>
+            </div>`;
+            break;
+        }
+    }
+    return element.content;
 }
 
 const updateSetting = (id, type) => {
-	if (localStorage.getItem(id) !== null) {
-		let elem = $(`#${id}`);
-		if (elem) elem[type === 'checkbox' ? 'checked' : 'value'] = JSON.parse(localStorage.getItem(id));
-	}
+    if (localStorage.getItem(id) !== null) {
+        let elem = $(`#${id}`);
+        if (elem) elem[type === 'checkbox' ? 'checked' : 'value'] = JSON.parse(localStorage.getItem(id));
+    }
 }
 
 const addSetting = (id, type, cb = () => { }) => {
-	let elem = $(`#${id}`);
-	if (elem) {
-		elem.onchange = () => {
-			cb();
-			localStorage.setItem(id, type === 'checkbox' ? elem.checked : elem.value);
-		}
-	}
+    let elem = $(`#${id}`);
+    if (elem) {
+        elem.onchange = () => {
+            cb();
+            localStorage.setItem(id, type === 'checkbox' ? elem.checked : elem.value);
+        }
+    }
 }
 
 let path = require('path');
 ipcRenderer.once('load', (e, args) => {
-	const { isDev } = args;
-	let link = document.createElement('link');
-	link.setAttribute('rel', 'stylesheet');
-	let extraFilesPath = isDev 
-		? path.resolve(__dirname, '..', 'unpack') 
-		: path.resolve(__dirname, '..', '..', 'app.asar.unpacked', 'unpack');
-	link.setAttribute('href', path.join(extraFilesPath, 'extra.css'));
-	document.head.appendChild(link);
+    const { isDev } = args;
+    let link = document.createElement('link');
+    link.setAttribute('rel', 'stylesheet');
+    let extraFilesPath = isDev 
+        ? path.resolve(__dirname, '..', 'unpack') 
+        : path.resolve(__dirname, '..', '..', 'app.asar.unpacked', 'unpack');
+    link.setAttribute('href', path.join(extraFilesPath, 'extra.css'));
+    document.head.appendChild(link);
 });
 
 window.onload = () => {
@@ -82,6 +92,34 @@ window.onload = () => {
         document.body.appendChild(overlay);
         document.getElementById('exit-cancel').onclick = () => overlay.remove();
         document.getElementById('exit-confirm').onclick = () => ipcRenderer.send('app-quit-action');
+    }
+
+    function showAboutScreen() {
+        if (document.getElementById('nexa-about-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'nexa-about-overlay';
+        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(15px); display:flex; align-items:center; justify-content:center; z-index:999999; font-family:'Inter',sans-serif;";
+        
+        overlay.innerHTML = `
+            <div class="exit-card" style="max-width: 450px; background:#111; border:1px solid rgba(255,255,255,0.1); padding:40px; border-radius:20px; text-align:center; color:white; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+                <div style="font-size: 10px; letter-spacing: 2px; font-weight: 900; color: #ff4757;">SIC CORPORATION</div>
+                <h2 style="margin: 10px 0;">NexaFlow Client</h2>
+                <p style="color: #888; font-size: 14px; margin-bottom: 20px;">
+                    Created by <b>Roy</b> • Build v1.1.1
+                </p>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
+                    <div style="font-size: 9px; opacity: 0.5; letter-spacing: 1px; text-transform: uppercase;">Join the Community</div>
+                    <button class="comm-btn" onclick="window.open('https://discord.gg/Q6UypwueRR')">SIC Corp Discord</button>
+                    <button class="comm-btn" onclick="window.open('https://discord.gg/gKKTePAqkT')">NexaFlow Discord</button>
+                    <button class="comm-btn" onclick="window.open('https://discord.gg/AJ5Yq7kXqk')">Deadshot Discord</button>
+                </div>
+
+                <button id="close-about" style="background: #222; color: #888; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.2s;">CLOSE</button>
+            </div>`;
+        
+        document.body.appendChild(overlay);
+        document.getElementById('close-about').onclick = () => overlay.remove();
     }
 
     setInterval(() => { window.postMessage(JSON.stringify({ type: "gimmerich" })) }, 1000);
@@ -126,6 +164,9 @@ window.onload = () => {
         settings.append(genSetting('info', { text: 'Performance & HUD' }));
         settings.append(genSetting('toggle', { text: 'Show FPS Counter', id: 'enableFpsDisplay' }));
         settings.append(genSetting('toggle', { text: 'Smooth Play (Anti-Lag)', id: 'enableSmoothPlay' }));
+        settings.append(genSetting('spacer'));
+        settings.append(genSetting('info', { text: 'Credits' }));
+        settings.append(genSetting('button', { text: 'About SIC Corp', id: 'about-sic' }));
 
         ['enablePresence', 'enableRichPresence', 'enableFpsDisplay', 'enableSmoothPlay'].forEach(id => {
             updateSetting(id, 'checkbox');
@@ -137,8 +178,13 @@ window.onload = () => {
                 }
             });
         });
+
+        // Initialize HUD/SmoothPlay states
         $('#enableFpsDisplay').onchange();
         $('#enableSmoothPlay').onchange();
+
+        // Wire up the About button
+        document.getElementById('about-sic').onclick = () => showAboutScreen();
     }
 
     const times = [];
