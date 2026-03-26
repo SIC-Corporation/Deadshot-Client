@@ -58,7 +58,6 @@ ipcRenderer.once('load', (e, args) => {
 });
 
 window.onload = () => {
-    // --- 1. KEYBOARD INTERCEPTORS (ESC & ALT+F4) ---
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             e.stopPropagation(); 
@@ -69,7 +68,6 @@ window.onload = () => {
         }
     }, true);
 
-    // --- 2. CUSTOM EXIT SCREEN ---
     function showExitScreen() {
         if (document.getElementById('nexa-exit-overlay')) return;
         const overlay = document.createElement('div');
@@ -86,14 +84,12 @@ window.onload = () => {
             </div>
         `;
         document.body.appendChild(overlay);
-
         document.getElementById('exit-cancel').onclick = () => overlay.remove();
         document.getElementById('exit-confirm').onclick = () => {
             ipcRenderer.send('app-quit-action'); 
         };
     }
 
-    // --- 3. DISCORD RPC & MESSAGING ---
     setInterval(() => { window.postMessage(JSON.stringify({ type: "gimmerich" })) }, 1000);
     addEventListener("message", e => {
         try {
@@ -104,7 +100,6 @@ window.onload = () => {
         } catch(err) {}
     });
 
-    // --- 4. NEXAFLOW HUD ---
     const hud = document.createElement('div');
     hud.id = 'nexa-hud';
     hud.innerHTML = `
@@ -116,26 +111,11 @@ window.onload = () => {
     `;
     document.body.appendChild(hud);
 
-    // --- 5. GLOBAL STYLES ---
     const style = document.createElement('style');
     style.textContent = `
-        #nexa-hud {
-            position: fixed; top: 20px; left: 20px; z-index: 10000;
-            background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px);
-            padding: 10px 15px; border-radius: 8px; border-left: 4px solid #ff4757;
-            color: white; font-family: 'Inter', sans-serif; pointer-events: none;
-        }
-        #nexa-exit-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px);
-            display: flex; align-items: center; justify-content: center; z-index: 999999;
-            font-family: 'Inter', sans-serif;
-        }
-        .exit-card {
-            background: #111; border: 1px solid rgba(255,255,255,0.1);
-            padding: 40px; border-radius: 20px; text-align: center; color: white;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        }
+        #nexa-hud { position: fixed; top: 20px; left: 20px; z-index: 10000; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px); padding: 10px 15px; border-radius: 8px; border-left: 4px solid #ff4757; color: white; font-family: 'Inter', sans-serif; pointer-events: none; }
+        #nexa-exit-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; z-index: 999999; font-family: 'Inter', sans-serif; }
+        .exit-card { background: #111; border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; text-align: center; color: white; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .nexa-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .nexa-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
@@ -144,7 +124,6 @@ window.onload = () => {
     `;
     document.head.appendChild(style);
 
-    // --- 6. SETTINGS MENU ---
     let settings = $('#settingsDiv');
     if (settings) {
         settings.innerHTML = ''; 
@@ -159,11 +138,10 @@ window.onload = () => {
         ['enablePresence', 'enableRichPresence', 'enableFpsDisplay', 'enableSmoothPlay'].forEach(id => {
             updateSetting(id, 'checkbox');
             addSetting(id, 'checkbox', () => {
-                hud.style.display = $('#enableFpsDisplay').checked ? 'block' : 'none';
-                if ($('#enableSmoothPlay').checked) {
-                    document.body.classList.add('smooth-play-active');
-                } else {
-                    document.body.classList.remove('smooth-play-active');
+                if (id === 'enableFpsDisplay') hud.style.display = $('#enableFpsDisplay').checked ? 'block' : 'none';
+                if (id === 'enableSmoothPlay') {
+                    if ($('#enableSmoothPlay').checked) document.body.classList.add('smooth-play-active');
+                    else document.body.classList.remove('smooth-play-active');
                 }
             });
         });
@@ -171,7 +149,6 @@ window.onload = () => {
         $('#enableSmoothPlay').onchange();
     }
 
-    // --- 7. FPS LOOP ---
     const times = [];
     function refreshLoop() {
         window.requestAnimationFrame(() => {
