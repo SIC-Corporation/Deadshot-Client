@@ -3,112 +3,106 @@ const path = require('path');
 const electronLocalshortcut = require('electron-localshortcut');
 const isDev = require('electron-is-dev');
 
-//* Performance Boosts
+//* Performance Boosts - SIC Corp Standards
 app.commandLine.appendSwitch('disable-frame-rate-limit');
 app.commandLine.appendSwitch('force_high_performance_gpu');
 
-const defaultIcon = './build/icon.ico';
+const defaultIcon = path.join(__dirname, '..', 'build', 'icon.ico');
 
 let mainWindow;
 const gameWindow = () => {
-	mainWindow = new BrowserWindow({
-		width: 1920 * 0.8,
-		height: 1080 * 0.8,
-		title: 'NexaFlow Client', // Updated title
-		icon: defaultIcon,
-		webPreferences: {
-			preload: path.join(__dirname, 'preload.js'),
-			nodeIntegration: true,
-			contextIsolation: false,
-			webSecurity: false
-		}
-	});
+    mainWindow = new BrowserWindow({
+        width: 1920 * 0.8,
+        height: 1080 * 0.8,
+        title: 'NexaFlow Client',
+        icon: defaultIcon,
+        backgroundColor: '#000000', 
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
+        }
+    });
 
-	// Send load event once the page is ready
-	mainWindow.webContents.on('did-finish-load', () => {
-		mainWindow.webContents.send('load', { isDev });
-	});
+    mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('load', { isDev });
+    });
 
-	mainWindow.loadURL('https://deadshot.io/');
-	mainWindow.removeMenu();
+    mainWindow.loadURL('https://deadshot.io/');
+    mainWindow.removeMenu();
 }
 
 let splash;
 const splashWindow = () => {
-	splash = new BrowserWindow({
-		width: 1024,
-		height: 600,
-		center: true,
-		icon: './build/icon.ico',
-		alwaysOnTop: true,
-		resizable: false,
-		frame: false,
-		transparent: true
-	});
-	splash.loadURL(`file://${__dirname}/../public/splash.html`);
-	splash.removeMenu();
+    splash = new BrowserWindow({
+        width: 1024,
+        height: 600,
+        center: true,
+        icon: defaultIcon,
+        alwaysOnTop: true,
+        resizable: false,
+        frame: false,
+        transparent: true,
+        hasShadow: false
+    });
+    splash.loadURL(`file://${path.join(__dirname, '../public/splash.html')}`);
 }
 
 const load = () => {
-	splashWindow();
-	setTimeout(() => {
-		let interval = setInterval(() => {
-			if (splash.isDestroyed()) return clearInterval(interval);
-			splash.setOpacity(splash.getOpacity() - 0.05);
-			if (splash.getOpacity() < 0.1) {
-				splash.close();
-				clearInterval(interval);
-			}
-		}, 10);
-		open();
-	}, 1500); // Slightly longer splash for a premium feel
+    splashWindow();
+    setTimeout(() => {
+        let interval = setInterval(() => {
+            if (!splash || splash.isDestroyed()) return clearInterval(interval);
+            let opacity = splash.getOpacity();
+            if (opacity > 0.1) {
+                splash.setOpacity(opacity - 0.05);
+            } else {
+                splash.close();
+                clearInterval(interval);
+                gameWindow(); 
+                setupShortcuts(); 
+            }
+        }, 20);
+    }, 2000); 
 }
 
-const open = () => {
-	gameWindow();
-
-	// REFRESH
-	electronLocalshortcut.register(mainWindow, 'F5', () => {
-		if (!mainWindow.isFocused()) return;
-		mainWindow.webContents.reload();
-	});
-	// FULLSCREEN
-	electronLocalshortcut.register(mainWindow, 'F11', () => {
-		if (!mainWindow.isFocused()) return;
-		mainWindow.setFullScreen(!mainWindow.isFullScreen());
-	});
-	// DEVTOOLS
-	electronLocalshortcut.register(mainWindow, 'F12', () => {
-		if (!mainWindow.isFocused()) return;
-		mainWindow.webContents.toggleDevTools();
-	});
-
-	/* NOTE: We REMOVED the 'Escape' shortcut here. 
-	   The 'preload.js' now handles Escape and Alt+F4 internally 
-	   to show the NexaFlow custom exit screen.
-	*/
+const setupShortcuts = () => {
+    electronLocalshortcut.register(mainWindow, 'F5', () => {
+        mainWindow.webContents.reload();
+    });
+    electronLocalshortcut.register(mainWindow, 'Control+R', () => {
+        mainWindow.webContents.session.clearCache().then(() => {
+            mainWindow.webContents.reload();
+        });
+    });
+    electronLocalshortcut.register(mainWindow, 'F11', () => {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+    });
+    electronLocalshortcut.register(mainWindow, 'F12', () => {
+        mainWindow.webContents.toggleDevTools();
+    });
 }
 
-// --- NEXAFLOW BRIDGE ---
-// This listens for the "EXIT" button click from your custom UI
+// --- NEXAFLOW EXIT BRIDGE ---
 ipcMain.on('app-quit-action', () => {
-	app.quit();
+    app.quit();
 });
 
 app.once('ready', () => {
-	load();
-	try {
-		const { updateActivity } = require('./rpcHandler.js');
-		ipcMain.handle('rpcData', (e, arg) => updateActivity(arg));
-	} catch (e) {
-		console.log("Discord RPC failed to load, skipping...");
-	}
+    load();
+    try {
+        const { updateActivity } = require('./rpcHandler.js');
+        ipcMain.handle('rpcData', (e, arg) => updateActivity(arg));
+    } catch (e) {
+        console.log("Discord RPC failed.");
+    }
 });
 
 app.on('window-all-closed', () => {
-	if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('will-quit', () => {
-	electronLocalshortcut.unregisterAll();
+    electronLocalshortcut.unregisterAll();
 });
