@@ -1,28 +1,27 @@
 const { ipcRenderer } = require('electron');
 const $ = (selector) => document.querySelector(selector);
 
+// --- NEXAFLOW UI GENERATOR ---
 const genSetting = (type, details) => {
 	let element = document.createElement('template');
 	switch (type) {
 		case 'spacer': {
-			element.innerHTML = `<div class="bar"></div>`;
+			element.innerHTML = `<div class="bar" style="background: rgba(255,255,255,0.05); height: 1px; margin: 10px 0;"></div>`;
 			break;
 		}
 		case 'info': {
 			element.innerHTML = `
 			<div class="setting toggle" style="margin-top: 14px; margin-bottom: 14px;">
-			<p style="font-size: 22px; margin-top: 2px;/* visibility: hidden; */">${details.text}</p>
-			<label style="visibility: hidden;">
-			<input class="checkbox" type="checkbox">
-			<span></span></label></div>`;
+			<p style="font-size: 14px; letter-spacing: 2px; font-weight: 800; color: #ff4757; text-transform: uppercase;">${details.text}</p>
+			</div>`;
 			break;
 		}
 		case 'toggle': {
 			element.innerHTML = `
-			<div class="setting toggle" style="margin-top: 14px; margin-bottom: 14px;">
-			<p style="font-size: 18px; margin-top: 2px;/* visibility: hidden; */">${details.text}</p>
-			<label><input id=${details.id} checked class="checkbox" type="checkbox">
-			<span></span></label></div>`;
+			<div class="setting toggle" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+			<p style="font-size: 16px; color: #eee;">${details.text}</p>
+			<label class="nexa-switch"><input id=${details.id} checked type="checkbox">
+			<span class="slider"></span></label></div>`;
 			break;
 		}
 	}
@@ -30,111 +29,100 @@ const genSetting = (type, details) => {
 }
 
 const updateSetting = (id, type) => {
-	if (localStorage.getItem(id) && localStorage.getItem(id) !== null && typeof localStorage.getItem(id) !== 'undefined' && localStorage.getItem(id) !== '') {
+	if (localStorage.getItem(id) !== null) {
 		let elem = $(`#${id}`);
-		switch (type) {
-			case 'input':
-				elem.value = JSON.parse(localStorage.getItem(id));
-				break;
-			case 'checkbox':
-				elem.checked = JSON.parse(localStorage.getItem(id));
-				break;
-			default:
-				elem.value = JSON.parse(localStorage.getItem(id));
-				break;
-		}
+		elem[type === 'checkbox' ? 'checked' : 'value'] = JSON.parse(localStorage.getItem(id));
 	}
 }
+
 const addSetting = (id, type, cb = () => { }) => {
 	let elem = $(`#${id}`);
-
 	elem.onchange = () => {
 		cb();
-		switch (type) {
-			case 'input':
-				localStorage.setItem(id, elem.value);
-				break;
-			case 'checkbox':
-				localStorage.setItem(id, elem.checked);
-				break;
-			default:
-				localStorage.setItem(id, elem.value);
-				break;
-		}
+		localStorage.setItem(id, type === 'checkbox' ? elem.checked : elem.value);
 	}
 }
 
 let path = require('path');
 ipcRenderer.once('load', (e, args) => {
 	const { isDev } = args;
-
 	let link = document.createElement('link');
 	link.setAttribute('rel', 'stylesheet');
-	let extraFilesPath = '';
-	if (isDev) {
-		extraFilesPath = path.resolve(__dirname, '..', 'unpack');
-	} else {
-		extraFilesPath = path.resolve(__dirname, '..', '..', 'app.asar.unpacked', 'unpack');
-	}
+	let extraFilesPath = isDev 
+		? path.resolve(__dirname, '..', 'unpack') 
+		: path.resolve(__dirname, '..', '..', 'app.asar.unpacked', 'unpack');
 	link.setAttribute('href', path.join(extraFilesPath, 'extra.css'));
 	document.head.appendChild(link);
 });
+
 window.onload = () => {
+	// --- DISCORD RPC LOGIC ---
+	setInterval(() => { window.postMessage(JSON.stringify({ type: "gimmerich" })) }, 1000);
 	addEventListener("message", e => {
-		let data = JSON.parse(e.data);
-		if (Array.isArray(data) && data.length == 4) {
-			ipcRenderer.invoke('rpcData', { data, presence: $('#enablePresence').checked, rich: $('#enableRichPresence').checked });
-		}
+		try {
+			let data = JSON.parse(e.data);
+			if (Array.isArray(data) && data.length == 4) {
+				ipcRenderer.invoke('rpcData', { data, presence: $('#enablePresence').checked, rich: $('#enableRichPresence').checked });
+			}
+		} catch(err) {}
 	});
-	setInterval(() => {
-		window.postMessage(JSON.stringify({ type: "gimmerich" }))
-	}, 1000);
 
-	let fpsCounter = document.createElement('p');
-	fpsCounter.textContent = 'X FPS';
-	fpsCounter.classList.add('fpsCounter');
+	// --- NEW NEXAFLOW HUD ---
+	const hud = document.createElement('div');
+	hud.id = 'nexa-hud';
+	hud.innerHTML = `
+		<div style="font-size: 9px; font-weight: 900; opacity: 0.6; letter-spacing: 1px;">NEXAFLOW CLIENT</div>
+		<div style="display: flex; gap: 10px; align-items: baseline;">
+			<span id="fps-val" style="font-size: 18px; font-weight: 800; color: #ff4757;">--</span>
+			<span style="font-size: 10px; font-weight: 700; opacity: 0.8;">FPS</span>
+		</div>
+	`;
+	document.body.appendChild(hud);
 
-	document.body.appendChild(fpsCounter);
+	// --- HUD STYLING ---
+	const style = document.createElement('style');
+	style.textContent = `
+		#nexa-hud {
+			position: fixed; top: 20px; left: 20px; z-index: 10000;
+			background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px);
+			padding: 10px 15px; border-radius: 8px; border-left: 4px solid #ff4757;
+			color: white; font-family: 'Inter', sans-serif; pointer-events: none;
+		}
+		.nexa-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+		.nexa-switch input { opacity: 0; width: 0; height: 0; }
+		.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
+		input:checked + .slider { background-color: #ff4757; }
+	`;
+	document.head.appendChild(style);
+
+	// --- SETTINGS MENU ASSEMBLY ---
 	let settings = $('#settingsDiv');
+	if (settings) {
+		settings.innerHTML = ''; // Clear old UI
+		settings.append(genSetting('info', { text: 'NexaFlow Settings' }));
+		settings.append(genSetting('toggle', { text: 'Discord Presence', id: 'enablePresence' }));
+		settings.append(genSetting('toggle', { text: 'Rich Presence', id: 'enableRichPresence' }));
+		settings.append(genSetting('spacer'));
+		settings.append(genSetting('info', { text: 'Client Performance' }));
+		settings.append(genSetting('toggle', { text: 'Show FPS Counter', id: 'enableFpsDisplay' }));
 
-	settings.addEventListener('wheel', (e) => {
-		settings.scrollBy(0, e.deltaY);
-	});
+		['enablePresence', 'enableRichPresence', 'enableFpsDisplay'].forEach(id => {
+			updateSetting(id, 'checkbox');
+			addSetting(id, 'checkbox', () => {
+				hud.style.display = $('#enableFpsDisplay').checked ? 'block' : 'none';
+			});
+		});
+		$('#enableFpsDisplay').onchange();
+	}
 
-	let gameSettingsInfo = genSetting('info', { text: 'Game Settings: ' });
-	settings.insertBefore(gameSettingsInfo, settings.firstChild);
-	let clientSettingsInfo = genSetting('info', { text: 'Client Settings: ' });
-	settings.append(genSetting('spacer'), clientSettingsInfo);
-	let presenceEnabled = genSetting('toggle', { text: 'Enable discord presence', id: 'enablePresence' });
-	settings.append(genSetting('spacer'), presenceEnabled);
-	let presenceRichEnabled = genSetting('toggle', { text: 'Enable discord rich presence', id: 'enableRichPresence' });
-	settings.append(genSetting('spacer'), presenceRichEnabled);
-	let fpsDisplayEnabled = genSetting('toggle', { text: 'Enable FPS display', id: 'enableFpsDisplay' });
-	settings.append(genSetting('spacer'), fpsDisplayEnabled);
-	updateSetting('enablePresence', 'checkbox');
-	updateSetting('enableRichPresence', 'checkbox');
-	updateSetting('enableFpsDisplay', 'checkbox');
-	addSetting('enablePresence', 'checkbox');
-	addSetting('enableRichPresence', 'checkbox');
-	addSetting('enableFpsDisplay', 'checkbox', () => {
-		if ($('#enableFpsDisplay').checked) {
-			fpsCounter.style.display = 'block';
-		} else {
-			fpsCounter.style.display = 'none';
-		}
-	});
-
-	$('#enableFpsDisplay').onchange();
-
+	// --- OPTIMIZED FPS LOOP ---
 	const times = [];
 	function refreshLoop() {
 		window.requestAnimationFrame(() => {
 			const now = performance.now();
-			while (times.length > 0 && times[0] <= now - 1000) {
-				times.shift();
-			}
+			while (times.length > 0 && times[0] <= now - 1000) { times.shift(); }
 			times.push(now);
-			fpsCounter.textContent = `${times.length} FPS`;
+			$('#fps-val').textContent = times.length;
 			refreshLoop();
 		});
 	}
