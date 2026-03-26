@@ -1,202 +1,128 @@
 const { ipcRenderer } = require('electron');
+const path = require('path');
+
 const $ = (selector) => document.querySelector(selector);
 
 // --- NEXAFLOW UI GENERATOR ---
 const genSetting = (type, details) => {
     let element = document.createElement('template');
     switch (type) {
-        case 'spacer': {
+        case 'spacer': 
             element.innerHTML = `<div class="bar" style="background: rgba(255,255,255,0.05); height: 1px; margin: 10px 0;"></div>`;
             break;
-        }
-        case 'info': {
-            element.innerHTML = `
-            <div class="setting toggle" style="margin-top: 14px; margin-bottom: 14px;">
-            <p style="font-size: 14px; letter-spacing: 2px; font-weight: 800; color: #ff4757; text-transform: uppercase;">${details.text}</p>
-            </div>`;
+        case 'info': 
+            element.innerHTML = `<div class="setting toggle" style="margin-top: 14px; margin-bottom: 14px;">
+            <p style="font-size: 12px; letter-spacing: 2px; font-weight: 800; color: #ff4757; text-transform: uppercase;">${details.text}</p></div>`;
             break;
-        }
-        case 'toggle': {
-            element.innerHTML = `
-            <div class="setting toggle" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <p style="font-size: 16px; color: #eee;">${details.text}</p>
-            <label class="nexa-switch"><input id=${details.id} checked type="checkbox">
-            <span class="slider"></span></label></div>`;
+        case 'toggle': 
+            element.innerHTML = `<div class="setting toggle" style="margin-top: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 15px; color: #eee;">${details.text}</p>
+            <label class="nexa-switch"><input id=${details.id} checked type="checkbox"><span class="slider"></span></label></div>`;
             break;
-        }
-        case 'button': {
-            element.innerHTML = `
-            <div class="setting" style="margin-top: 10px; margin-bottom: 10px;">
-                <button id="${details.id}" class="comm-btn" style="width: 100%; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700;">
-                    ${details.text}
-                </button>
-            </div>`;
+        case 'button': 
+            element.innerHTML = `<div class="setting" style="margin-top: 10px; margin-bottom: 10px;">
+            <button id="${details.id}" class="comm-btn" style="width: 100%; padding: 10px; background:#222; color:#fff; border:none; border-radius: 8px; cursor: pointer; font-weight: 700;">${details.text}</button></div>`;
             break;
-        }
     }
     return element.content;
 }
 
-const updateSetting = (id, type) => {
-    if (localStorage.getItem(id) !== null) {
-        let elem = $(`#${id}`);
-        if (elem) elem[type === 'checkbox' ? 'checked' : 'value'] = JSON.parse(localStorage.getItem(id));
+// Logic to force UI into the menu whenever it opens
+function injectNexaUI() {
+    // Check multiple possible IDs for the settings menu
+    const settingsPanel = $('#settingsDiv') || $('.settings-container') || $('.window-content');
+    
+    if (settingsPanel && !document.getElementById('nexa-loaded')) {
+        const nexaMarker = document.createElement('div');
+        nexaMarker.id = 'nexa-loaded'; // Prevents double injection
+        settingsPanel.prepend(nexaMarker);
+
+        // Append UI elements
+        settingsPanel.prepend(genSetting('button', { text: 'About SIC Corp', id: 'about-sic' }));
+        settingsPanel.prepend(genSetting('spacer'));
+        settingsPanel.prepend(genSetting('toggle', { text: 'Smooth Play (Anti-Lag)', id: 'enableSmoothPlay' }));
+        settingsPanel.prepend(genSetting('toggle', { text: 'Show FPS Counter', id: 'enableFpsDisplay' }));
+        settingsPanel.prepend(genSetting('info', { text: 'NexaFlow Performance' }));
+
+        // Wire up logic
+        document.getElementById('about-sic').onclick = () => showAboutScreen();
+        
+        ['enableFpsDisplay', 'enableSmoothPlay'].forEach(id => {
+            const el = document.getElementById(id);
+            el.onchange = () => {
+                if (id === 'enableFpsDisplay') document.getElementById('nexa-hud').style.display = el.checked ? 'block' : 'none';
+                if (id === 'enableSmoothPlay') document.body.classList.toggle('smooth-play-active', el.checked);
+                localStorage.setItem(id, el.checked);
+            };
+            // Load saved settings
+            const saved = localStorage.getItem(id);
+            if (saved !== null) { el.checked = JSON.parse(saved); el.onchange(); }
+        });
     }
 }
 
-const addSetting = (id, type, cb = () => { }) => {
-    let elem = $(`#${id}`);
-    if (elem) {
-        elem.onchange = () => {
-            cb();
-            localStorage.setItem(id, type === 'checkbox' ? elem.checked : elem.value);
-        }
-    }
-}
+// Watch for the menu opening using a MutationObserver
+const observer = new MutationObserver(() => injectNexaUI());
+observer.observe(document.documentElement, { childList: true, subtree: true });
 
-let path = require('path');
-ipcRenderer.once('load', (e, args) => {
-    const { isDev } = args;
-    let link = document.createElement('link');
-    link.setAttribute('rel', 'stylesheet');
-    let extraFilesPath = isDev 
-        ? path.resolve(__dirname, '..', 'unpack') 
-        : path.resolve(__dirname, '..', '..', 'app.asar.unpacked', 'unpack');
-    link.setAttribute('href', path.join(extraFilesPath, 'extra.css'));
-    document.head.appendChild(link);
-});
-
+// --- HUD, OVERLAYS & STYLES ---
 window.onload = () => {
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') e.stopPropagation(); 
-        if (e.altKey && e.key === 'F4') {
-            e.preventDefault();
-            showExitScreen();
-        }
-    }, true);
-
-    function showExitScreen() {
-        if (document.getElementById('nexa-exit-overlay')) return;
-        const overlay = document.createElement('div');
-        overlay.id = 'nexa-exit-overlay';
-        overlay.innerHTML = `
-            <div class="exit-card">
-                <div class="nexa-header" style="font-size: 10px; letter-spacing: 2px; font-weight: 900; color: rgba(255,255,255,0.5);">NEXAFLOW <span style="color:#ff4757">●</span></div>
-                <h2 style="margin: 15px 0 10px 0; font-size: 24px;">Quit the game?</h2>
-                <p style="color: #888; margin-bottom: 25px;">Are you sure you want to exit to desktop?</p>
-                <div class="exit-buttons">
-                    <button id="exit-confirm" style="background: #ff4757; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 800; cursor: pointer;">EXIT</button>
-                    <button id="exit-cancel" style="background: #222; color: #888; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 800; cursor: pointer; margin-left: 10px;">STAY</button>
-                </div>
-            </div>`;
-        document.body.appendChild(overlay);
-        document.getElementById('exit-cancel').onclick = () => overlay.remove();
-        document.getElementById('exit-confirm').onclick = () => ipcRenderer.send('app-quit-action');
-    }
-
-    function showAboutScreen() {
-        if (document.getElementById('nexa-about-overlay')) return;
-        const overlay = document.createElement('div');
-        overlay.id = 'nexa-about-overlay';
-        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(15px); display:flex; align-items:center; justify-content:center; z-index:999999; font-family:'Inter',sans-serif;";
-        
-        overlay.innerHTML = `
-            <div class="exit-card" style="max-width: 450px; background:#111; border:1px solid rgba(255,255,255,0.1); padding:40px; border-radius:20px; text-align:center; color:white; box-shadow:0 20px 50px rgba(0,0,0,0.5);">
-                <div style="font-size: 10px; letter-spacing: 2px; font-weight: 900; color: #ff4757;">SIC CORPORATION</div>
-                <h2 style="margin: 10px 0;">NexaFlow Client</h2>
-                <p style="color: #888; font-size: 14px; margin-bottom: 20px;">
-                    Created by <b>Roy</b> • Build v1.1.1
-                </p>
-                
-                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">
-                    <div style="font-size: 9px; opacity: 0.5; letter-spacing: 1px; text-transform: uppercase;">Join the Community</div>
-                    <button class="comm-btn" onclick="window.open('https://discord.gg/Q6UypwueRR')">SIC Corp Discord</button>
-                    <button class="comm-btn" onclick="window.open('https://discord.gg/gKKTePAqkT')">NexaFlow Discord</button>
-                    <button class="comm-btn" onclick="window.open('https://discord.gg/AJ5Yq7kXqk')">Deadshot Discord</button>
-                </div>
-
-                <button id="close-about" style="background: #222; color: #888; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.2s;">CLOSE</button>
-            </div>`;
-        
-        document.body.appendChild(overlay);
-        document.getElementById('close-about').onclick = () => overlay.remove();
-    }
-
-    setInterval(() => { window.postMessage(JSON.stringify({ type: "gimmerich" })) }, 1000);
-    addEventListener("message", e => {
-        try {
-            let data = JSON.parse(e.data);
-            if (Array.isArray(data) && data.length == 4) {
-                ipcRenderer.invoke('rpcData', { data, presence: $('#enablePresence').checked, rich: $('#enableRichPresence').checked });
-            }
-        } catch(err) {}
-    });
-
+    // 1. Create FPS HUD
     const hud = document.createElement('div');
     hud.id = 'nexa-hud';
-    hud.innerHTML = `
-        <div style="font-size: 9px; font-weight: 900; opacity: 0.6; letter-spacing: 1px;">NEXAFLOW CLIENT FOR DEADSHOT</div>
-        <div style="display: flex; gap: 10px; align-items: baseline;">
-            <span id="fps-val" style="font-size: 18px; font-weight: 800; color: #ff4757;">--</span>
-            <span style="font-size: 10px; font-weight: 700; opacity: 0.8;">FPS</span>
-        </div>`;
+    hud.innerHTML = `<div style="font-size: 9px; font-weight: 900; opacity: 0.6; letter-spacing: 1px;">NEXAFLOW</div>
+                     <div style="display: flex; gap: 5px; align-items: baseline;">
+                        <span id="fps-val" style="font-size: 18px; font-weight: 800; color: #ff4757;">--</span>
+                        <span style="font-size: 10px; font-weight: 700; opacity: 0.8;">FPS</span>
+                     </div>`;
     document.body.appendChild(hud);
 
+    // 2. Add Styles
     const style = document.createElement('style');
     style.textContent = `
-        #nexa-hud { position: fixed; top: 20px; left: 20px; z-index: 10000; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px); padding: 10px 15px; border-radius: 8px; border-left: 4px solid #ff4757; color: white; font-family: 'Inter', sans-serif; pointer-events: none; }
-        #nexa-exit-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; z-index: 999999; font-family: 'Inter', sans-serif; }
-        .exit-card { background: #111; border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; text-align: center; color: white; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        #nexa-hud { position: fixed; top: 20px; left: 20px; z-index: 10000; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px); padding: 10px 15px; border-radius: 8px; border-left: 4px solid #ff4757; color: white; font-family: sans-serif; pointer-events: none; }
         .nexa-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .nexa-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
         input:checked + .slider { background-color: #ff4757; }
-        .smooth-play-active { image-rendering: pixelated; filter: contrast(1.05) brightness(1.05); }`;
+        .smooth-play-active { image-rendering: pixelated; filter: contrast(1.1) brightness(1.1); }
+        .exit-card { background: #111; border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; text-align: center; color: white; }
+    `;
     document.head.appendChild(style);
 
-    let settings = $('#settingsDiv');
-    if (settings) {
-        settings.innerHTML = ''; 
-        settings.append(genSetting('info', { text: 'NexaFlow for DeadShot' }));
-        settings.append(genSetting('toggle', { text: 'Discord Presence', id: 'enablePresence' }));
-        settings.append(genSetting('toggle', { text: 'Rich Presence', id: 'enableRichPresence' }));
-        settings.append(genSetting('spacer'));
-        settings.append(genSetting('info', { text: 'Performance & HUD' }));
-        settings.append(genSetting('toggle', { text: 'Show FPS Counter', id: 'enableFpsDisplay' }));
-        settings.append(genSetting('toggle', { text: 'Smooth Play (Anti-Lag)', id: 'enableSmoothPlay' }));
-        settings.append(genSetting('spacer'));
-        settings.append(genSetting('info', { text: 'Credits' }));
-        settings.append(genSetting('button', { text: 'About SIC Corp', id: 'about-sic' }));
+    // 3. Alt+F4 / Exit Logic
+    window.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key === 'F4') { e.preventDefault(); showExitScreen(); }
+    }, true);
 
-        ['enablePresence', 'enableRichPresence', 'enableFpsDisplay', 'enableSmoothPlay'].forEach(id => {
-            updateSetting(id, 'checkbox');
-            addSetting(id, 'checkbox', () => {
-                if (id === 'enableFpsDisplay') hud.style.display = $('#enableFpsDisplay').checked ? 'block' : 'none';
-                if (id === 'enableSmoothPlay') {
-                    if ($('#enableSmoothPlay').checked) document.body.classList.add('smooth-play-active');
-                    else document.body.classList.remove('smooth-play-active');
-                }
-            });
-        });
-
-        // Initialize HUD/SmoothPlay states
-        $('#enableFpsDisplay').onchange();
-        $('#enableSmoothPlay').onchange();
-
-        // Wire up the About button
-        document.getElementById('about-sic').onclick = () => showAboutScreen();
-    }
-
-    const times = [];
-    function refreshLoop() {
+    // 4. FPS Counter Loop
+    let times = [];
+    (function refreshLoop() {
         window.requestAnimationFrame(() => {
             const now = performance.now();
             while (times.length > 0 && times[0] <= now - 1000) { times.shift(); }
             times.push(now);
-            const fpsVal = $('#fps-val');
+            const fpsVal = document.getElementById('fps-val');
             if(fpsVal) fpsVal.textContent = times.length;
             refreshLoop();
         });
-    }
-    refreshLoop();
+    })();
+};
+
+// Functions for Screens
+function showExitScreen() {
+    if (document.getElementById('nexa-exit-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'nexa-exit-overlay';
+    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:999999;";
+    overlay.innerHTML = `<div class="exit-card"><h2>Quit Game?</h2><br>
+        <button onclick="ipcRenderer.send('app-quit-action')" style="background:#ff4757; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer;">EXIT</button>
+        <button id="cancel-exit" style="background:#222; color:#888; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">STAY</button></div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('cancel-exit').onclick = () => overlay.remove();
+}
+
+function showAboutScreen() {
+    // Just a placeholder for the logic you already had
+    alert("NexaFlow Client v1.1.1\nCreated by Roy (SIC Corp)");
 }
