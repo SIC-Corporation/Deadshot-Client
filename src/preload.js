@@ -31,15 +31,17 @@ const genSetting = (type, details) => {
 const updateSetting = (id, type) => {
 	if (localStorage.getItem(id) !== null) {
 		let elem = $(`#${id}`);
-		elem[type === 'checkbox' ? 'checked' : 'value'] = JSON.parse(localStorage.getItem(id));
+		if (elem) elem[type === 'checkbox' ? 'checked' : 'value'] = JSON.parse(localStorage.getItem(id));
 	}
 }
 
 const addSetting = (id, type, cb = () => { }) => {
 	let elem = $(`#${id}`);
-	elem.onchange = () => {
-		cb();
-		localStorage.setItem(id, type === 'checkbox' ? elem.checked : elem.value);
+	if (elem) {
+		elem.onchange = () => {
+			cb();
+			localStorage.setItem(id, type === 'checkbox' ? elem.checked : elem.value);
+		}
 	}
 }
 
@@ -56,7 +58,14 @@ ipcRenderer.once('load', (e, args) => {
 });
 
 window.onload = () => {
-	// --- DISCORD RPC LOGIC ---
+	// --- 1. BLOCK THE "DOUBLE-ESC" QUIT PROMPT ---
+	window.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape') {
+			e.stopPropagation(); 
+		}
+	}, true);
+
+	// --- 2. DISCORD RPC & MESSAGING ---
 	setInterval(() => { window.postMessage(JSON.stringify({ type: "gimmerich" })) }, 1000);
 	addEventListener("message", e => {
 		try {
@@ -67,7 +76,7 @@ window.onload = () => {
 		} catch(err) {}
 	});
 
-	// --- NEW NEXAFLOW HUD ---
+	// --- 3. NEXAFLOW HUD ---
 	const hud = document.createElement('div');
 	hud.id = 'nexa-hud';
 	hud.innerHTML = `
@@ -79,7 +88,7 @@ window.onload = () => {
 	`;
 	document.body.appendChild(hud);
 
-	// --- HUD STYLING ---
+	// --- 4. HUD & SMOOTH PLAY STYLING ---
 	const style = document.createElement('style');
 	style.textContent = `
 		#nexa-hud {
@@ -88,6 +97,10 @@ window.onload = () => {
 			padding: 10px 15px; border-radius: 8px; border-left: 4px solid #ff4757;
 			color: white; font-family: 'Inter', sans-serif; pointer-events: none;
 		}
+		.smooth-play-active {
+			image-rendering: pixelated; 
+			filter: contrast(1.05) brightness(1.05);
+		}
 		.nexa-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
 		.nexa-switch input { opacity: 0; width: 0; height: 0; }
 		.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 20px; }
@@ -95,34 +108,44 @@ window.onload = () => {
 	`;
 	document.head.appendChild(style);
 
-	// --- SETTINGS MENU ASSEMBLY ---
+	// --- 5. SETTINGS MENU ASSEMBLY ---
 	let settings = $('#settingsDiv');
 	if (settings) {
-		settings.innerHTML = ''; // Clear old UI
+		settings.innerHTML = ''; 
 		settings.append(genSetting('info', { text: 'NexaFlow Settings' }));
 		settings.append(genSetting('toggle', { text: 'Discord Presence', id: 'enablePresence' }));
 		settings.append(genSetting('toggle', { text: 'Rich Presence', id: 'enableRichPresence' }));
+		
 		settings.append(genSetting('spacer'));
-		settings.append(genSetting('info', { text: 'Client Performance' }));
+		settings.append(genSetting('info', { text: 'Performance & HUD' }));
 		settings.append(genSetting('toggle', { text: 'Show FPS Counter', id: 'enableFpsDisplay' }));
+		settings.append(genSetting('toggle', { text: 'Smooth Play (Anti-Lag)', id: 'enableSmoothPlay' }));
 
-		['enablePresence', 'enableRichPresence', 'enableFpsDisplay'].forEach(id => {
+		['enablePresence', 'enableRichPresence', 'enableFpsDisplay', 'enableSmoothPlay'].forEach(id => {
 			updateSetting(id, 'checkbox');
 			addSetting(id, 'checkbox', () => {
 				hud.style.display = $('#enableFpsDisplay').checked ? 'block' : 'none';
+				if ($('#enableSmoothPlay').checked) {
+					document.body.classList.add('smooth-play-active');
+				} else {
+					document.body.classList.remove('smooth-play-active');
+				}
 			});
 		});
+		
 		$('#enableFpsDisplay').onchange();
+		$('#enableSmoothPlay').onchange();
 	}
 
-	// --- OPTIMIZED FPS LOOP ---
+	// --- 6. OPTIMIZED FPS LOOP ---
 	const times = [];
 	function refreshLoop() {
 		window.requestAnimationFrame(() => {
 			const now = performance.now();
 			while (times.length > 0 && times[0] <= now - 1000) { times.shift(); }
 			times.push(now);
-			$('#fps-val').textContent = times.length;
+			const fpsVal = $('#fps-val');
+			if(fpsVal) fpsVal.textContent = times.length;
 			refreshLoop();
 		});
 	}
