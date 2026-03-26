@@ -43,3 +43,29 @@
 p[style*="color: #ff4757"] {
     text-shadow: 0 0 10px rgba(255, 71, 87, 0.3);
 }
+
+/* Community Discord Buttons */
+.comm-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ccc;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.comm-btn:hover {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: #ff4757;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 71, 87, 0.2);
+}
+
+#close-about:hover {
+    background: #333;
+    color: white;
+}
