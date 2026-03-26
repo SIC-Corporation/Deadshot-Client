@@ -1,7 +1,7 @@
-name: Build NexaFlow Client
+name: Build NexaFlow Client (Pre-release)
 on:
   release:
-    types: [created] # Runs when you create a GitHub Release
+    types: [created]
 
 jobs:
   release:
@@ -21,4 +21,4 @@ jobs:
       - name: Build & Publish
         run: npm run dist
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to upload the .exe to the release
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
