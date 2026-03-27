@@ -1,20 +1,24 @@
 let RPC = require('discord-rpc');
 let startTimestamp = Date.now();
 
-const clientId = '1016740004187357214';
+// TIP: Create a new app at discord.com/developers to get your own ID for custom logos
+const clientId = '1016740004187357214'; 
 const rpc = new RPC.Client({ transport: 'ipc' });
 
 let activity = {
-	details: 'Loading client',
-	largeImageKey: 'logo-big',
+	details: 'Booting NexaFlow...',
+	state: 'Main Menu',
+	largeImageKey: 'logo-big', // Ensure this key exists in your Discord Dev Portal
 	startTimestamp,
-	buttons: [{ label: 'Download', url: 'https://github.com/FeeshDev/DeadshotClient/releases/latest' }]
+	buttons: [
+		{ label: 'Join SIC Corp Discord', url: 'https://discord.gg/YOUR_LINK_HERE' },
+		{ label: 'Get NexaFlow', url: 'https://nexaflow.example.com' }
+	]
 }
 
 const updateActivity = details => {
 	let { presence, rich, data } = details;
 	let [time, mode, map, ingame] = data;
-	//console.log(map)
 	activity.enabled = presence;
 
 	if (presence) {
@@ -23,31 +27,17 @@ const updateActivity = details => {
 				let [minutes, seconds] = time.split(':');
 				let totalSeconds = parseInt(minutes) * 60 + parseInt(seconds);
 
-				activity.details = `Playing ${mode} on ${map}`;
-				activity.state = 'In game';
+				activity.details = `Dominating ${mode}`;
+				activity.state = `Map: ${map}`;
 				activity.endTimestamp = Date.now() + totalSeconds * 1000;
 				activity.largeImageKey = map.toLowerCase();
-				activity.largeImageText = `${mode} on ${map}`;
-				activity.smallImageKey = undefined;
-				activity.smallImageText = undefined;
+				activity.largeImageText = `NexaFlow v1.1.2 // ${map}`;
 			} else {
-				activity.details = undefined;
-				activity.state = 'In menu';
-				activity.endTimestamp = undefined;
+				activity.details = 'Preparing for Battle';
+				activity.state = 'In Lobby';
 				activity.largeImageKey = 'logo-big';
-				activity.largeImageText = 'What peculiar action is the dog partaking in?';
-				activity.smallImageKey = 'logo-small';
-				activity.smallImageText = 'Probably matchmaking...';
+				activity.largeImageText = 'SIC Corp Proprietary Client';
 			}
-		} else {
-			activity.details = undefined;
-			activity.state = undefined;
-			activity.endTimestamp = undefined;
-			activity.startTimestamp = startTimestamp;
-			activity.largeImageKey = 'logo-big';
-			activity.largeImageText = undefined;
-			activity.smallImageKey = undefined;
-			activity.smallImageText = undefined;
 		}
 	} else {
 		rpc.clearActivity();
@@ -56,16 +46,14 @@ const updateActivity = details => {
 
 const setActivity = () => {
 	if (!activity.enabled) return;
-	rpc.setActivity(activity);
+	rpc.setActivity(activity).catch(() => {});
 }
 
 rpc.on('ready', () => {
 	setActivity();
-
-	// activity can only be set every 15 seconds
 	setInterval(() => {
 		setActivity();
-	}, 15000 / 3);
+	}, 5000); // Updates every 5 seconds
 });
 
 rpc.login({ clientId }).catch(console.error);
