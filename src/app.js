@@ -15,6 +15,7 @@ const gameWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
         height: 900,
+        show: false, // Keeps window hidden until the game starts loading
         backgroundColor: '#0a0a0a',
         title: 'NexaFlow Client',
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
@@ -22,7 +23,7 @@ const gameWindow = () => {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: true,
             contextIsolation: false,
-            webSecurity: false, // Critical for Deadshot assets
+            webSecurity: false, 
             sandbox: false
         }
     });
@@ -30,8 +31,6 @@ const gameWindow = () => {
     mainWindow.loadURL('https://deadshot.io/');
     mainWindow.removeMenu();
 }
-
-// ... Keep your splashWindow and loadSequence logic here ...
 
 ipcMain.on('app-quit-action', () => {
     app.quit();
@@ -43,9 +42,23 @@ const registerKeys = () => {
     electronLocalshortcut.register(mainWindow, 'F12', () => mainWindow.webContents.toggleDevTools());
 }
 
+const loadSequence = () => {
+    gameWindow(); 
+    
+    if (mainWindow) {
+        mainWindow.once('ready-to-show', () => {
+            registerKeys();
+            mainWindow.show(); // Smooth launch
+        });
+    }
+};
+
+// Start the engine
 app.on('ready', () => {
-    // Your loadSequence calling gameWindow()
-    loadSequence(); 
+    loadSequence();
 });
 
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+// Clean exit
+app.on('window-all-closed', () => { 
+    if (process.platform !== 'darwin') app.quit(); 
+});
