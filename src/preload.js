@@ -1,97 +1,86 @@
 const { ipcRenderer } = require('electron');
 
-// 1. STYLES (Forced to be the highest priority)
+// 1. INJECT MASTER STYLES
 const style = document.createElement('style');
 style.textContent = `
-    #nexa-overlay-layer { 
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-        pointer-events: none; z-index: 2147483647; font-family: 'Segoe UI', sans-serif; 
+    #nexa-overlay-container {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        pointer-events: none; z-index: 99999999; font-family: 'Segoe UI', Arial, sans-serif;
     }
-    #nexa-hud { 
-        position: absolute; top: 20px; left: 20px; background: rgba(10, 10, 10, 0.85); 
-        backdrop-filter: blur(8px); padding: 12px 20px; border-radius: 10px; 
-        border-left: 5px solid #ff4757; color: white; pointer-events: auto;
+    #nexa-fps-hud {
+        position: absolute; top: 20px; left: 20px;
+        background: rgba(0, 0, 0, 0.8); border-left: 4px solid #ff4757;
+        padding: 10px 15px; border-radius: 4px; color: white;
+        pointer-events: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
-    .nexa-card { 
+    .nexa-menu-card {
         position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        background: #0f0f0f; border: 2px solid #ff4757; padding: 30px; 
-        border-radius: 15px; text-align: center; color: white; pointer-events: auto;
-        box-shadow: 0 0 30px rgba(255, 71, 87, 0.3); display: none;
+        background: #111; border: 2px solid #ff4757; padding: 30px;
+        border-radius: 12px; text-align: center; color: white;
+        display: none; pointer-events: auto; width: 300px;
     }
-    .nexa-btn { 
-        background: #ff4757; color: white; border: none; padding: 10px 25px; 
-        border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s;
+    .nexa-btn {
+        background: #ff4757; color: white; border: none; padding: 12px;
+        width: 100%; margin-top: 10px; cursor: pointer; font-weight: bold;
+        border-radius: 6px; transition: 0.2s;
     }
-    .nexa-btn:hover { background: #ff6b81; transform: scale(1.05); }
+    .nexa-btn:hover { background: #ff6b81; transform: translateY(-2px); }
 `;
 document.head.appendChild(style);
 
-// 2. CREATE OVERLAY LAYER
-const overlayLayer = document.createElement('div');
-overlayLayer.id = 'nexa-overlay-layer';
-document.documentElement.appendChild(overlayLayer);
+// 2. INITIALIZE THE OVERLAY
+const container = document.createElement('div');
+container.id = 'nexa-overlay-container';
+document.documentElement.appendChild(container);
 
-// 3. BUILD THE HUD
-overlayLayer.innerHTML = `
-    <div id="nexa-hud">
-        <div style="font-size: 10px; font-weight: 900; color: #ff4757; letter-spacing: 2px;">SIC CORP // NEXAFLOW</div>
-        <div style="display: flex; gap: 8px; align-items: baseline;">
-            <span id="fps-val" style="font-size: 24px; font-weight: 800;">--</span>
-            <span style="font-size: 12px; font-weight: 700; opacity: 0.7;">FPS</span>
+container.innerHTML = `
+    <div id="nexa-fps-hud">
+        <div style="font-size: 10px; font-weight: 900; color: #ff4757; letter-spacing: 1px;">SIC CORP // NEXAFLOW</div>
+        <div style="display: flex; align-items: baseline; gap: 5px;">
+            <span id="fps-val" style="font-size: 22px; font-weight: 800; color: #fff;">--</span>
+            <span style="font-size: 11px; font-weight: 600; opacity: 0.6;">FPS</span>
         </div>
     </div>
-    <div id="nexa-esc-menu" class="nexa-card">
-        <h1 style="margin-top:0; color:#ff4757;">SYSTEM PAUSED</h1>
-        <p>NexaFlow Client v1.1.1</p>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-            <button class="nexa-btn" onclick="location.reload()">RELOAD GAME</button>
-            <button class="nexa-btn" style="background:#222;" id="about-btn">ABOUT CLIENT</button>
-            <button class="nexa-btn" style="background:#333;" id="close-menu">RESUME</button>
-        </div>
+
+    <div id="nexa-esc-menu" class="nexa-menu-card">
+        <h2 style="margin-bottom: 5px; color: #ff4757;">NEXAFLOW PAUSE</h2>
+        <p style="font-size: 12px; opacity: 0.7; margin-bottom: 20px;">Client v1.1.1 | Developed by Roy</p>
+        <button class="nexa-btn" onclick="location.reload()">RELOAD GAME</button>
+        <button class="nexa-btn" style="background: #222;" onclick="alert('NexaFlow Client - SIC Corp Property')">ABOUT</button>
+        <button class="nexa-btn" style="background: #333;" id="close-nexa">RESUME</button>
     </div>
 `;
 
-// 4. LOGIC & KEYBINDS
+// 3. THE SMART FPS COUNTER
+let frameCount = 0;
+let lastTime = performance.now();
+let fpsDisplay = document.getElementById('fps-val');
+
+function updateFPS() {
+    frameCount++;
+    let currentTime = performance.now();
+    if (currentTime - lastTime >= 1000) {
+        fpsDisplay.innerText = frameCount;
+        frameCount = 0;
+        lastTime = currentTime;
+    }
+    requestAnimationFrame(updateFPS);
+}
+updateFPS();
+
+// 4. THE ESC & CLICK LOGIC
 const escMenu = document.getElementById('nexa-esc-menu');
 
 window.addEventListener('keydown', (e) => {
-    // ESC Toggle Logic
     if (e.key === 'Escape') {
-        const isHidden = escMenu.style.display === 'none' || escMenu.style.display === '';
-        escMenu.style.display = isHidden ? 'block' : 'none';
-        
-        // If menu is open, allow mouse interaction
-        overlayLayer.style.pointerEvents = isHidden ? 'auto' : 'none';
-    }
-    
-    // Alt+F4 Safety Logic
-    if (e.altKey && e.key === 'F4') {
-        if(confirm("Exit NexaFlow?")) ipcRenderer.send('app-quit-action');
+        const isShowing = escMenu.style.display === 'block';
+        escMenu.style.display = isShowing ? 'none' : 'block';
+        // Unlock mouse so we can click our menu buttons
+        container.style.pointerEvents = isShowing ? 'none' : 'auto';
     }
 });
 
-document.getElementById('close-menu').onclick = () => {
+document.getElementById('close-nexa').onclick = () => {
     escMenu.style.display = 'none';
-    overlayLayer.style.pointerEvents = 'none';
+    container.style.pointerEvents = 'none';
 };
-
-document.getElementById('about-btn').onclick = () => {
-    alert("NexaFlow Client v1.1.1\nCreated by Roy (SIC Corp)\nEngine: Electron 20.1.1");
-};
-
-// 5. FPS COUNTER (Optimized)
-let lastCalledTime;
-let fps;
-function requestAnim() {
-    if (!lastCalledTime) {
-        lastCalledTime = performance.now();
-        fps = 0;
-    } else {
-        let delta = (performance.now() - lastCalledTime) / 1000;
-        lastCalledTime = performance.now();
-        fps = Math.round(1 / delta);
-        document.getElementById('fps-val').innerText = fps;
-    }
-    window.requestAnimationFrame(requestAnim);
-}
-requestAnim();
