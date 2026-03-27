@@ -23,26 +23,15 @@
     "asarUnpack": [
       "unpack"
     ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "FeeshDev",
-        "repo": "DeadshotClient"
-      }
-    ],
     "files": [
-  "src/**/*",
-  "public/**/*",
-  "build/**/*",
-  "package.json"
-],
-"directories": {
-  "buildResources": "build",
-  "output": "dist"
-}
+      "src/**/*",
+      "public/**/*",
+      "build/**/*",
+      "package.json"
+    ],
     "directories": {
       "buildResources": "build",
-      "output": "dist/${version}/${platform}/"
+      "output": "dist"
     },
     "nsis": {
       "oneClick": false,
@@ -55,7 +44,7 @@
   },
   "devDependencies": {
     "electron": "^20.1.1",
-    "electron-builder": "^23.3.3"
+    "electron-builder": "^26.8.1"
   },
   "dependencies": {
     "discord-rpc": "^4.0.1",
