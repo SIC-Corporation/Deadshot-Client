@@ -31,11 +31,15 @@
       }
     ],
     "files": [
-      "unpack/**",
-      "build/**",
-      "src/**.js",
-      "package.json"
-    ],
+  "src/**/*",
+  "public/**/*",
+  "build/**/*",
+  "package.json"
+],
+"directories": {
+  "buildResources": "build",
+  "output": "dist"
+}
     "directories": {
       "buildResources": "build",
       "output": "dist/${version}/${platform}/"
