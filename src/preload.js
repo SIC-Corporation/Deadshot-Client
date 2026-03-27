@@ -1,106 +1,96 @@
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, shell } = require('electron');
 
 const initNexaFlow = () => {
-    // 1. Safety Check: Don't inject twice, and wait for the 'body' to exist
-    if (document.getElementById('nexa-overlay-container') || !document.body) return;
+    if (document.getElementById('nexa-overlay')) return;
 
-    console.log("NexaFlow: Ultimate Merge Injection Active.");
-
+    // 1. INJECT THE UI STYLES
     const style = document.createElement('style');
     style.textContent = `
-        /* KILL ADS AND CLEAN UI */
-        #ad-container, .ad-unit, .home-right, .home-left, #ui-pause, .ad-v, #canvas-holder + div[style*="position: absolute"] { 
-            display: none !important; opacity: 0 !important; pointer-events: none !important; 
+        #nexa-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 999999; font-family: 'Segoe UI', sans-serif; }
+        
+        /* THE SOCIAL SIDEBAR */
+        #nexa-social { 
+            position: absolute; right: -300px; top: 0; width: 300px; height: 100%; 
+            background: rgba(10, 10, 10, 0.95); border-left: 2px solid #ff4757; 
+            transition: 0.3s; pointer-events: auto; padding: 20px; color: white;
         }
+        #nexa-social.open { right: 0; }
+        
+        .friend-item { padding: 10px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; font-size: 13px; }
+        .status-online { color: #2ecc71; font-size: 10px; }
 
-        #nexa-overlay-container {
-            position: fixed !important; top: 0 !important; left: 0 !important;
-            width: 100vw !important; height: 100vh !important;
-            pointer-events: none !important; z-index: 9999999 !important;
+        /* THE CHAT BOX */
+        #nexa-chat { height: 200px; background: #000; margin-top: 20px; overflow-y: auto; padding: 10px; font-size: 12px; border: 1px solid #333; }
+        
+        /* CUSTOM MENU */
+        #nexa-menu { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #0f0f0f; border: 2px solid #ff4757; padding: 40px; 
+            border-radius: 15px; display: none; pointer-events: auto; text-align: center; width: 350px;
         }
-        #nexa-fps-hud {
-            position: absolute !important; top: 15px !important; left: 15px !important;
-            background: rgba(10, 10, 10, 0.9) !important; border-left: 4px solid #ff4757 !important;
-            padding: 8px 12px !important; border-radius: 4px !important;
-            color: white !important; font-family: 'Segoe UI', Arial !important;
+        .nexa-btn { 
+            width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; 
+            background: #ff4757; color: white; font-weight: 800; cursor: pointer; 
         }
-        .nexa-menu-card {
-            position: absolute !important; top: 50% !important; left: 50% !important;
-            transform: translate(-50%, -50%) !important; background: #0a0a0a !important;
-            border: 2px solid #ff4757 !important; padding: 30px !important;
-            border-radius: 12px !important; text-align: center !important; color: white !important;
-            display: none; width: 320px !important; pointer-events: auto !important;
-            box-shadow: 0 0 40px rgba(0,0,0,0.9) !important;
-        }
-        .nexa-btn {
-            background: #ff4757 !important; color: white !important; border: none !important;
-            padding: 12px !important; width: 100% !important; margin-top: 10px !important;
-            cursor: pointer !important; font-weight: 800 !important; border-radius: 5px !important;
-            transition: background 0.2s;
-        }
-        .nexa-btn:hover { background: #ff6b81 !important; }
     `;
     document.head.appendChild(style);
 
-    const container = document.createElement('div');
-    container.id = 'nexa-overlay-container';
-    document.body.appendChild(container);
-
-    container.innerHTML = `
-        <div id="nexa-fps-hud">
-            <div style="font-size: 9px; color: #ff4757; font-weight: 900;">NEXAFLOW v1.1.2</div>
-            <div style="font-size: 20px; font-weight: 800;"><span id="fps-val">--</span> <span style="font-size: 10px; opacity: 0.5;">FPS</span></div>
+    // 2. CREATE THE ELEMENTS
+    const overlay = document.createElement('div');
+    overlay.id = 'nexa-overlay';
+    overlay.innerHTML = `
+        <div id="nexa-menu">
+            <h1 style="color:#ff4757; margin:0;">NEXAFLOW</h1>
+            <p style="opacity:0.5; font-size:10px; margin-bottom:20px;">SIC CORP // CLIENT OVERRIDE</p>
+            <button class="nexa-btn" id="nexa-discord">JOIN OUR DISCORD</button>
+            <button class="nexa-btn" style="background:#333" id="nexa-settings">NEXA SETTINGS</button>
+            <button class="nexa-btn" style="background:#222" onclick="location.reload()">RELOAD</button>
+            <button class="nexa-btn" style="background:#ff4757" id="nexa-resume">RESUME</button>
         </div>
-        <div id="nexa-esc-menu" class="nexa-menu-card">
-            <h2 style="margin: 0; color: #ff4757; letter-spacing: 2px;">SYSTEM PAUSED</h2>
-            <p style="font-size: 11px; opacity: 0.6; margin-bottom: 20px;">SIC CORP // PRIVILEGED ACCESS</p>
-            <button class="nexa-btn" onclick="location.reload()">RELOAD GAME</button>
-            <button class="nexa-btn" style="background: #222 !important;" id="close-nexa">RESUME</button>
-            <button class="nexa-btn" style="background: #111 !important;" onclick="ipcRenderer.send('app-quit-action')">EXIT TO DESKTOP</button>
+
+        <div id="nexa-social">
+            <h3 style="color:#ff4757">FRIENDS</h3>
+            <div class="friend-item">Roy (SIC Corp) <span class="status-online">● Online</span></div>
+            <div class="friend-item">Guest_402 <span style="color:#555">● Offline</span></div>
+            
+            <h3 style="color:#ff4757; margin-top:30px;">CLIENT CHAT</h3>
+            <div id="nexa-chat">
+                <div style="color:#ff4757">[System]: Connected to NexaFlow Chat...</div>
+            </div>
+            <input type="text" placeholder="Type message..." style="width:100%; background:#222; border:none; color:white; padding:10px; margin-top:5px;">
         </div>
     `;
+    document.body.appendChild(overlay);
 
-    // FPS Loop
-    let frames = 0, lastTime = performance.now();
-    const update = () => {
-        frames++;
-        let now = performance.now();
-        if (now - lastTime >= 1000) {
-            const fpsEl = document.getElementById('fps-val');
-            if (fpsEl) fpsEl.innerText = frames;
-            frames = 0; lastTime = now;
-        }
-        requestAnimationFrame(update);
-    }
-    update();
-
-    // Consolidated Menu Logic
-    const toggleMenu = (show) => {
-        const menu = document.getElementById('nexa-esc-menu');
-        if (!menu) return;
-        menu.style.display = show ? 'block' : 'none';
-        container.style.pointerEvents = show ? 'auto' : 'none';
-        if (show) {
-            document.exitPointerLock(); 
-        } else {
-            document.body.requestPointerLock();
-        }
-    };
-
-    // THE ESCAPE HIJACK
+    // 3. LOGIC: KEY HIJACK & DISCORD
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-            const menu = document.getElementById('nexa-esc-menu');
-            toggleMenu(menu.style.display !== 'block');
+            e.stopImmediatePropagation(); // KILLS NORMAL MENU
+            const menu = document.getElementById('nexa-menu');
+            const isShown = menu.style.display === 'block';
+            
+            menu.style.display = isShown ? 'none' : 'block';
+            document.getElementById('nexa-social').classList.toggle('open', !isShown);
+            
+            if (!isShown) document.exitPointerLock();
+            else document.body.requestPointerLock();
         }
-    }, true); 
+    }, true);
 
-    document.getElementById('close-nexa').onclick = () => toggleMenu(false);
+    // 4. DISCORD REDIRECT
+    document.getElementById('nexa-discord').onclick = () => {
+        // REPLACE THIS URL WITH YOUR ACTUAL DISCORD LINK
+        require('electron').shell.openExternal('https://discord.gg/YOUR_LINK_HERE');
+    };
+
+    document.getElementById('nexa-resume').onclick = () => {
+        document.getElementById('nexa-menu').style.display = 'none';
+        document.getElementById('nexa-social').classList.remove('open');
+        document.body.requestPointerLock();
+    };
 };
 
-// Start checking for body presence every 100ms
+// Start checking
 const checkReady = setInterval(() => {
     if (document.body) {
         initNexaFlow();
