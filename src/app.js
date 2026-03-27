@@ -6,6 +6,7 @@ const isDev = require('electron-is-dev');
 //* Performance Boosts - SIC Corp Standards
 app.commandLine.appendSwitch('disable-frame-rate-limit');
 app.commandLine.appendSwitch('force_high_performance_gpu');
+app.commandLine.appendSwitch('disable-gpu-vsync'); // Bonus: even more frames
 
 const defaultIcon = path.join(__dirname, '..', 'build', 'icon.ico');
 
@@ -20,7 +21,8 @@ const gameWindow = () => {
 			preload: path.join(__dirname, 'preload.js'),
 			nodeIntegration: true,
 			contextIsolation: false,
-			webSecurity: false
+			webSecurity: false,
+			sandbox: false // CRITICAL: This allows the preload to inject the "Cool Stuff"
 		}
 	});
 
@@ -89,8 +91,8 @@ ipcMain.on('app-quit-action', () => {
 app.once('ready', () => {
 	load();
 	try {
+		// Ensure this path is correct relative to app.js
 		const { updateActivity } = require('./rpcHandler.js');
-		// Fixed: use ipcMain in the main process, not ipcRenderer
 		ipcMain.handle('rpcData', (e, arg) => updateActivity(arg));
 	} catch (e) {
 		console.log("Discord RPC failed to load, skipping...");
