@@ -15,6 +15,7 @@ const gameWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
         height: 900,
+        backgroundColor: '#0a0a0a', // Dark theme start
         title: 'NexaFlow Client',
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
         webPreferences: {
@@ -28,42 +29,12 @@ const gameWindow = () => {
 
     mainWindow.loadURL('https://deadshot.io/');
     mainWindow.removeMenu();
-
-    // Auto-open DevTools if you're debugging
-    // mainWindow.webContents.openDevTools();
 }
 
-let splash;
-const splashWindow = () => {
-    splash = new BrowserWindow({
-        width: 1024, height: 600, center: true, 
-        alwaysOnTop: true, frame: false, transparent: true
-    });
-    splash.loadURL(`file://${path.join(__dirname, '../public/splash.html')}`);
-}
+// ... Keep your splashWindow and loadSequence exactly as they were ...
 
-const loadSequence = () => {
-    splashWindow();
-    setTimeout(() => {
-        let interval = setInterval(() => {
-            if (splash.isDestroyed()) return clearInterval(interval);
-            let opacity = splash.getOpacity();
-            if (opacity > 0.1) splash.setOpacity(opacity - 0.05);
-            else { 
-                splash.close(); 
-                clearInterval(interval); 
-                gameWindow(); 
-                registerKeys();
-            }
-        }, 15);
-    }, 2000);
-}
+ipcMain.on('app-quit-action', () => {
+    app.quit();
+});
 
-const registerKeys = () => {
-    electronLocalshortcut.register(mainWindow, 'F5', () => mainWindow.webContents.reload());
-    electronLocalshortcut.register(mainWindow, 'F11', () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
-    electronLocalshortcut.register(mainWindow, 'F12', () => mainWindow.webContents.toggleDevTools());
-}
-
-app.on('ready', loadSequence);
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+// registerKeys and other logic below...
