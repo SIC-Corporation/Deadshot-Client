@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
+const fs = require('fs'); // For loading the private config
 const electronLocalshortcut = require('electron-localshortcut');
 
 //* SIC Corp Performance Flags
@@ -11,6 +12,13 @@ app.commandLine.appendSwitch('ignore-gpu-blacklist');
 
 let mainWindow;
 
+// Load private config safely
+let config = { GLOBAL_WEBHOOK: '' };
+const configPath = path.join(__dirname, '..', 'config.json');
+if (fs.existsSync(configPath)) {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
 const gameWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
@@ -21,6 +29,8 @@ const gameWindow = () => {
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
+            // This injects the webhook URL into the process safely
+            additionalArguments: [`--webhook=${config.GLOBAL_WEBHOOK}`],
             nodeIntegration: true,
             contextIsolation: false,
             webSecurity: false, 
@@ -32,15 +42,8 @@ const gameWindow = () => {
     mainWindow.removeMenu();
 }
 
-// HANDLERS FOR YOUR NEW UI
-ipcMain.on('app-quit-action', () => {
-    app.quit();
-});
-
-// This catches the Discord button click from your preload.js
-ipcMain.on('open-discord', (event, url) => {
-    shell.openExternal(url);
-});
+ipcMain.on('app-quit-action', () => app.quit());
+ipcMain.on('open-discord', (event, url) => shell.openExternal(url));
 
 const registerKeys = () => {
     electronLocalshortcut.register(mainWindow, 'F5', () => mainWindow.webContents.reload());
@@ -58,10 +61,5 @@ const loadSequence = () => {
     }
 };
 
-app.on('ready', () => {
-    loadSequence();
-});
-
-app.on('window-all-closed', () => { 
-    if (process.platform !== 'darwin') app.quit(); 
-});
+app.on('ready', () => loadSequence());
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
