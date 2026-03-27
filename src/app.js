@@ -15,14 +15,14 @@ const gameWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
         height: 900,
-        backgroundColor: '#0a0a0a', // Dark theme start
+        backgroundColor: '#0a0a0a',
         title: 'NexaFlow Client',
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: true,
             contextIsolation: false,
-            webSecurity: false,
+            webSecurity: false, // Critical for Deadshot assets
             sandbox: false
         }
     });
@@ -31,10 +31,21 @@ const gameWindow = () => {
     mainWindow.removeMenu();
 }
 
-// ... Keep your splashWindow and loadSequence exactly as they were ...
+// ... Keep your splashWindow and loadSequence logic here ...
 
 ipcMain.on('app-quit-action', () => {
     app.quit();
 });
 
-// registerKeys and other logic below...
+const registerKeys = () => {
+    electronLocalshortcut.register(mainWindow, 'F5', () => mainWindow.webContents.reload());
+    electronLocalshortcut.register(mainWindow, 'F11', () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
+    electronLocalshortcut.register(mainWindow, 'F12', () => mainWindow.webContents.toggleDevTools());
+}
+
+app.on('ready', () => {
+    // Your loadSequence calling gameWindow()
+    loadSequence(); 
+});
+
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
