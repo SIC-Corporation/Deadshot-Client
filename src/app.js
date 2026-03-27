@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const electronLocalshortcut = require('electron-localshortcut');
 
@@ -15,7 +15,7 @@ const gameWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
         height: 900,
-        show: false, // Keeps window hidden until the game starts loading
+        show: false, 
         backgroundColor: '#0a0a0a',
         title: 'NexaFlow Client',
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
@@ -32,8 +32,14 @@ const gameWindow = () => {
     mainWindow.removeMenu();
 }
 
+// HANDLERS FOR YOUR NEW UI
 ipcMain.on('app-quit-action', () => {
     app.quit();
+});
+
+// This catches the Discord button click from your preload.js
+ipcMain.on('open-discord', (event, url) => {
+    shell.openExternal(url);
 });
 
 const registerKeys = () => {
@@ -44,21 +50,18 @@ const registerKeys = () => {
 
 const loadSequence = () => {
     gameWindow(); 
-    
     if (mainWindow) {
         mainWindow.once('ready-to-show', () => {
             registerKeys();
-            mainWindow.show(); // Smooth launch
+            mainWindow.show();
         });
     }
 };
 
-// Start the engine
 app.on('ready', () => {
     loadSequence();
 });
 
-// Clean exit
 app.on('window-all-closed', () => { 
     if (process.platform !== 'darwin') app.quit(); 
 });
