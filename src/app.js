@@ -1,7 +1,8 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
-const fs = require('fs'); // For loading the private config
+const fs = require('fs');
 const electronLocalshortcut = require('electron-localshortcut');
+const rpc = require('./rpcHandler'); // Import the RPC logic
 
 //* SIC Corp Performance Flags
 app.commandLine.appendSwitch('disable-frame-rate-limit');
@@ -12,7 +13,7 @@ app.commandLine.appendSwitch('ignore-gpu-blacklist');
 
 let mainWindow;
 
-// Load private config safely
+// Load private config
 let config = { GLOBAL_WEBHOOK: '' };
 const configPath = path.join(__dirname, '..', 'config.json');
 if (fs.existsSync(configPath)) {
@@ -29,7 +30,6 @@ const gameWindow = () => {
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            // This injects the webhook URL into the process safely
             additionalArguments: [`--webhook=${config.GLOBAL_WEBHOOK}`],
             nodeIntegration: true,
             contextIsolation: false,
@@ -51,15 +51,14 @@ const registerKeys = () => {
     electronLocalshortcut.register(mainWindow, 'F12', () => mainWindow.webContents.toggleDevTools());
 }
 
-const loadSequence = () => {
-    gameWindow(); 
+app.on('ready', () => {
+    gameWindow();
     if (mainWindow) {
         mainWindow.once('ready-to-show', () => {
             registerKeys();
             mainWindow.show();
         });
     }
-};
+});
 
-app.on('ready', () => loadSequence());
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
