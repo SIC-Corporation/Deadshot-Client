@@ -1,33 +1,55 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
-const fs = require('fs');
+const DiscordRPC = require('discord-rpc');
 const electronLocalshortcut = require('electron-localshortcut');
-const rpc = require('./rpcHandler');
 
-app.commandLine.appendSwitch('disable-frame-rate-limit');
-app.commandLine.appendSwitch('force_high_performance_gpu');
+// --- PULLING ARGS FROM YOUR .BAT FILE ---
+const getArg = (key) => {
+    const found = process.argv.find(arg => arg.startsWith(`--${key}=`));
+    return found ? found.split('=')[1] : null;
+};
 
-let mainWindow;
+const GLOBAL_WEBHOOK = getArg('webhook') || "";
+const STAFF_HOOK = getArg('staffhook') || "";
 
-let config = { GLOBAL_WEBHOOK: '', STAFF_DM_WEBHOOK: '' };
-const configPath = path.join(__dirname, '..', 'config.json');
-if (fs.existsSync(configPath)) {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+// --- DISCORD RPC SETUP ---
+const clientId = 'YOUR_DISCORD_APP_ID'; 
+DiscordRPC.register(clientId);
+const rpc = new DiscordRPC.Client({ transport: 'ipc' });
+
+async function setActivity() {
+    if (!rpc) return;
+    rpc.setActivity({
+        details: 'Playing NexaFlow',
+        state: 'v1.0.0 | SIC Corp',
+        largeImageKey: 'nexa_logo',
+        largeImageText: 'NexaFlow Elite',
+        instance: false,
+    }).catch(() => {}); 
 }
 
-const gameWindow = () => {
+rpc.on('ready', () => {
+    setActivity();
+});
+
+rpc.login({ clientId }).catch(() => console.log("RPC Offline"));
+
+// --- MAIN WINDOW LOGIC ---
+let mainWindow;
+
+function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 1600, height: 900,
+        width: 1600, 
+        height: 900,
         show: false,
         backgroundColor: '#0a0a0a',
-        // --- VERSION BUMPED HERE ---
-        title: 'NexaFlow Client v1.1.0 - SIC Corp', 
-        icon: path.join(__dirname, '..', 'build', 'icon.ico'),
+        title: "Deadshot.io - NexaFlow v1.0.0", // Kept at v1.0.0 per instructions
+        icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             additionalArguments: [
-                `--webhook=${config.GLOBAL_WEBHOOK}`,
-                `--staffhook=${config.STAFF_DM_WEBHOOK}`
+                `--webhook=${GLOBAL_WEBHOOK}`,
+                `--staffhook=${STAFF_HOOK}`
             ],
             nodeIntegration: true,
             contextIsolation: false,
@@ -35,15 +57,21 @@ const gameWindow = () => {
         }
     });
 
-    mainWindow.loadURL('https://deadshot.io/');
+    mainWindow.loadURL('https://deadshot.io');
     mainWindow.removeMenu();
-}
 
-app.on('ready', () => {
-    gameWindow();
     mainWindow.once('ready-to-show', () => {
+        // Register Shortcuts
         electronLocalshortcut.register(mainWindow, 'F5', () => mainWindow.webContents.reload());
         electronLocalshortcut.register(mainWindow, 'F11', () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
         mainWindow.show();
     });
+}
+
+// Single entry point
+app.whenReady().then(createWindow);
+
+// Quit when all windows are closed
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
 });
