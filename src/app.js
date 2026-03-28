@@ -9,7 +9,6 @@ app.commandLine.appendSwitch('force_high_performance_gpu');
 
 let mainWindow;
 
-// Load config with both Webhooks
 let config = { GLOBAL_WEBHOOK: '', STAFF_DM_WEBHOOK: '' };
 const configPath = path.join(__dirname, '..', 'config.json');
 if (fs.existsSync(configPath)) {
@@ -21,11 +20,11 @@ const gameWindow = () => {
         width: 1600, height: 900,
         show: false,
         backgroundColor: '#0a0a0a',
-        title: 'NexaFlow Client v1.1.0',
+        // --- VERSION BUMPED HERE ---
+        title: 'NexaFlow Client v1.1.0 - SIC Corp', 
         icon: path.join(__dirname, '..', 'build', 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-            // Injecting both webhooks safely
             additionalArguments: [
                 `--webhook=${config.GLOBAL_WEBHOOK}`,
                 `--staffhook=${config.STAFF_DM_WEBHOOK}`
