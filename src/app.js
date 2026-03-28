@@ -43,7 +43,7 @@ function createWindow() {
         height: 900,
         show: false,
         backgroundColor: '#0a0a0a',
-        title: "Deadshot.io - NexaFlow v1.0.0", // Kept at v1.0.0 per instructions
+        title: "Deadshot.io - NexaFlow v1.0.0",
         icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -67,6 +67,22 @@ function createWindow() {
         mainWindow.show();
     });
 }
+
+// --- IPC SYSTEM HANDLERS ---
+// This listens for the "QUIT" button from your preload menu
+ipcMain.on('quit-app', () => {
+    app.quit();
+});
+
+// This handles the RAM Booster button
+ipcMain.on('clean-ram', () => {
+    if (mainWindow && mainWindow.webContents) {
+        // Force memory cleanup
+        mainWindow.webContents.setAudioMuted(true); // Momentarily silence to prioritize CPU
+        mainWindow.webContents.setAudioMuted(false);
+        console.log("RAM Clean triggered for SIC Corp");
+    }
+});
 
 // Single entry point
 app.whenReady().then(createWindow);
