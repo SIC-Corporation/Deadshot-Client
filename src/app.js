@@ -3,7 +3,13 @@ const path = require('path');
 const DiscordRPC = require('discord-rpc');
 const electronLocalshortcut = require('electron-localshortcut');
 
-// --- PULLING ARGS FROM YOUR .BAT FILE ---
+// --- 🚀 HIGH PERFORMANCE MEMORY & FPS SWITCHES ---
+// These flags allow the client to use 4GB of RAM and unlock the framerate
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096 --expose-gc');
+app.commandLine.appendSwitch('disable-frame-rate-limit');
+app.commandLine.appendSwitch('disable-gpu-vsync');
+app.commandLine.appendSwitch('force_high_performance_gpu');
+
 const getArg = (key) => {
     const found = process.argv.find(arg => arg.startsWith(`--${key}=`));
     return found ? found.split('=')[1] : null;
@@ -12,7 +18,7 @@ const getArg = (key) => {
 const GLOBAL_WEBHOOK = getArg('webhook') || "";
 const STAFF_HOOK = getArg('staffhook') || "";
 
-// --- DISCORD RPC SETUP ---
+// --- DISCORD RPC ---
 const clientId = 'YOUR_DISCORD_APP_ID'; 
 DiscordRPC.register(clientId);
 const rpc = new DiscordRPC.Client({ transport: 'ipc' });
@@ -23,18 +29,14 @@ async function setActivity() {
         details: 'Playing NexaFlow',
         state: 'v1.0.0 | SIC Corp',
         largeImageKey: 'nexa_logo',
-        largeImageText: 'NexaFlow Elite',
         instance: false,
     }).catch(() => {}); 
 }
 
-rpc.on('ready', () => {
-    setActivity();
-});
-
+rpc.on('ready', () => setActivity());
 rpc.login({ clientId }).catch(() => console.log("RPC Offline"));
 
-// --- MAIN WINDOW LOGIC ---
+// --- MAIN WINDOW ---
 let mainWindow;
 
 function createWindow() {
@@ -43,7 +45,7 @@ function createWindow() {
         height: 900,
         show: false,
         backgroundColor: '#0a0a0a',
-        title: "Deadshot.io - NexaFlow v1.0.0",
+        title: "NexaFlow Client v1.0.0", // Reverted to v1.0.0 as requested
         icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -61,33 +63,32 @@ function createWindow() {
     mainWindow.removeMenu();
 
     mainWindow.once('ready-to-show', () => {
-        // Register Shortcuts
+        // Essential Shortcuts
         electronLocalshortcut.register(mainWindow, 'F5', () => mainWindow.webContents.reload());
         electronLocalshortcut.register(mainWindow, 'F11', () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
         mainWindow.show();
     });
 }
 
-// --- IPC SYSTEM HANDLERS ---
-// This listens for the "QUIT" button from your preload menu
+// --- 🛠️ SYSTEM HANDLERS ---
+
+// Quits the entire application
 ipcMain.on('quit-app', () => {
     app.quit();
 });
 
-// This handles the RAM Booster button
+// Advanced RAM Purge for smooth gameplay
 ipcMain.on('clean-ram', () => {
     if (mainWindow && mainWindow.webContents) {
-        // Force memory cleanup
-        mainWindow.webContents.setAudioMuted(true); // Momentarily silence to prioritize CPU
-        mainWindow.webContents.setAudioMuted(false);
-        console.log("RAM Clean triggered for SIC Corp");
+        // Triggers the V8 Engine Garbage Collector directly
+        mainWindow.webContents.executeJavaScript('if(window.gc){window.gc(); console.log("NexaFlow: V8 GC Executed");}')
+            .then(() => console.log("SIC Corp: RAM Purge Successful"))
+            .catch(err => console.error("Purge Error:", err));
     }
 });
 
-// Single entry point
 app.whenReady().then(createWindow);
 
-// Quit when all windows are closed
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
